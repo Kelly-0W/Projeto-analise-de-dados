@@ -32,7 +32,7 @@ def padronizar(df: pd.DataFrame) -> pd.DataFrame:
     for coluna in set(resultado.columns) & INTEIROS:
         numero = _numero(resultado[coluna])
         resultado[coluna] = numero.where(numero.isna() | numero.mod(1).eq(0)).astype("Int64")
-    if "data" in resultado: resultado["data"] = pd.to_datetime(resultado["data"], errors="coerce")
+    if "data" in resultado: resultado["data"] = pd.to_datetime(resultado["data"], errors="coerce", dayfirst=True)
     return resultado
 
 def auditoria_pendencias(tabela: str, df: pd.DataFrame, obrigatorias: Iterable[str] | None = None) -> pd.DataFrame:
