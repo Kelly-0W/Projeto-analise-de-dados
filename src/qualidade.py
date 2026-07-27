@@ -42,3 +42,26 @@ def auditoria_pendencias(tabela: str, df: pd.DataFrame, obrigatorias: Iterable[s
         if campo in df and (pendentes := int(df[campo].isna().sum())):
             linhas.append({"tabela_origem": tabela, "campo": campo, "valores_pendentes": pendentes, "pct_pendente": round(pendentes / len(df) * 100, 2) if len(df) else 0.0})
     return pd.DataFrame(linhas, columns=["tabela_origem", "campo", "valores_pendentes", "pct_pendente"])
+
+def marcar_pendencias(tabela: str, df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Cria sinalização por registro e uma tabela detalhada de campos ausentes.
+
+    Não substitui nulos por texto em campos numéricos/datas; isso preserva seus
+    tipos para análise e identifica o problema nas colunas de controle.
+    """
+    resultado = df.copy().reset_index(drop=True)
+    identificadores = [campo for campo in ("venda_id", "vendedor_id", "produto_id", "loja_id") if campo in resultado]
+    registro = resultado[identificadores].bfill(axis=1).iloc[:, 0] if identificadores else pd.Series(pd.NA, index=resultado.index)
+    registro = registro.fillna(pd.Series((resultado.index + 1).astype(str), index=resultado.index)).astype("string")
+    campos = [campo for campo in resultado.columns if campo not in {"linha_origem", "status_pendencia", "campos_pendentes"}]
+    faltas = resultado[campos].isna()
+    resultado.insert(0, "linha_origem", resultado.index + 1)
+    resultado["campos_pendentes"] = faltas.apply(lambda linha: ", ".join(linha.index[linha]), axis=1).mask(~faltas.any(axis=1), pd.NA)
+    resultado["status_pendencia"] = resultado["campos_pendentes"].notna().map({True: "Pendente", False: "Completo"})
+    detalhes = (faltas.assign(linha_origem=resultado["linha_origem"], registro_id=registro)
+                .melt(id_vars=["linha_origem", "registro_id"], var_name="campo_pendente", value_name="pendente")
+                .query("pendente")
+                .drop(columns="pendente"))
+    detalhes.insert(0, "tabela_origem", tabela)
+    detalhes["status_pendencia"] = "Pendente"
+    return resultado, detalhes[["tabela_origem", "linha_origem", "registro_id", "campo_pendente", "status_pendencia"]]

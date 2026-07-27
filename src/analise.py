@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 import pandas as pd
 from schemas import VendasSchema, VendedoresSchema
-from qualidade import auditoria_pendencias, padronizar
+from qualidade import auditoria_pendencias, marcar_pendencias, padronizar
 
 JANELAS = {
     "2026-01": ("2026-01-01", "2026-01-31"),
@@ -64,6 +64,9 @@ def main(origem: Path, destino: Path) -> None:
     pendencias = pd.concat([auditoria_pendencias("Vendas", vendas), auditoria_pendencias("Vendedores", vendedores)], ignore_index=True)
     vendas = vendas.merge(vendedores[["vendedor_id", "nome_vendedor"]], on="vendedor_id", how="left", validate="many_to_one")
     pendencias = pd.concat([pendencias, auditoria_pendencias("Vendas", vendas, ["nome_vendedor"])], ignore_index=True)
+    vendas_padronizadas, detalhes_vendas = marcar_pendencias("Vendas", vendas)
+    vendedores_padronizados, detalhes_vendedores = marcar_pendencias("Vendedores", vendedores)
+    detalhes_pendentes = pd.concat([detalhes_vendas, detalhes_vendedores], ignore_index=True)
 
     tabelas = {
         "eda_resumo_geral": pd.DataFrame([{
@@ -77,6 +80,9 @@ def main(origem: Path, destino: Path) -> None:
         "percentual_vendas_data": por_periodo(vendas, [], referencia=vendas),
         "itens_por_regiao_data": por_periodo(vendas, ["regiao", "produto_id", "produto"]),
         "qualidade_dados_pendentes": pendencias,
+        "dados_pendentes": detalhes_pendentes,
+        "vendas_padronizadas": vendas_padronizadas,
+        "vendedores_padronizados": vendedores_padronizados,
     }
     with sqlite3.connect(destino) as conexao:
         for nome, tabela in tabelas.items():
