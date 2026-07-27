@@ -1,9 +1,7 @@
 # Análise de vendas de eletrônicos — 1º semestre de 2026
-
 Projeto de EDA com **Pandas**, validação de dados com **Pandera** e publicação dos resultados em **SQLite**.
 
 ## Indicadores entregues
-
 - Participação percentual de vendas por região;
 - Participação percentual por funcionário/vendedor;
 - Participação por data: janeiro a junho, **Último trimestre** (abr–jun) e **Último semestre** (jan–jun);
@@ -11,8 +9,21 @@ Projeto de EDA com **Pandas**, validação de dados com **Pandera** e publicaç�
 
 As colunas `pct_transacoes`, `pct_quantidade` e `pct_faturamento` mostram participações percentuais. Nas tabelas por região e funcionário, a base é o semestre inteiro. Em `percentual_vendas_data`, cada mês e janela é comparado ao total do semestre; portanto, os seis meses somam 100%. Em `itens_por_regiao_data`, a base é o próprio período. "Vendas" são tratadas como transações (`venda_id`); a quantidade física está em `quantidade_vendida`.
 
-## Execução
+# Padronização e qualidade de dados
+O módulo `src/qualidade.py` é a única fonte das regras de padronização usadas na importação Excel→SQLite e na EDA.
 
+- IDs: remove espaços e converte para maiúsculas;
+- textos: remove espaços duplicados e aplica Title Case;
+- UF: remove espaços e converte para duas letras maiúsculas; o esquema Pandera bloqueia valores fora de `^[A-Z]{2}$`;
+- valores financeiros: conversão tolerante a formatos brasileiro/internacional e arredondamento em 2 casas;
+- quantidades: valores não inteiros viram pendência, sem truncamento silencioso;
+- `margem_%`: decimal com 4 casas.
+
+`Qualidade_Dados_Pendentes` (na importação) e `qualidade_dados_pendentes` (na análise) listam tabela, campo, número e percentual de valores ausentes após a limpeza. Assim, o Power BI pode exibir e filtrar problemas de qualidade sem interromper a atualização inteira.
+
+Além disso, cada tabela importada recebe `status_pendencia` (`Completo` ou `Pendente`) e `campos_pendentes`. A tabela `Dados_Pendentes` (importação) / `dados_pendentes` (análise) contém exclusivamente registros com problema, uma linha por campo faltante: `tabela_origem`, `linha_origem`, `registro_id`, `campo_pendente` e `status_pendencia`.
+
+## Execução
 ```powershell
 # 1. Instale as dependências necessárias
 python -m pip install -r requirements.txt
