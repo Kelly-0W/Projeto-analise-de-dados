@@ -4,6 +4,7 @@ com erros de formatação (texto bagunçado, número em formato BR, datas soltas
 """
 from __future__ import annotations
 import calendar
+import argparse
 import datetime as dt
 import random
 import sys
@@ -278,9 +279,8 @@ def salvar_excel(dfs: dict[str, pd.DataFrame], caminho: Path) -> None:
         ws.auto_filter.ref = f"A1:{get_column_letter(ws.max_column)}{ws.max_row}"
     wb.save(caminho)
 
-def main() -> None:
-    respostas = coletar_respostas()
-    modo, formatacao, mes, ano = respostas["modo"], respostas["formatacao"], respostas["mes"], respostas["ano"]
+def gerar_modelo(mes: int, ano: int, modo: str, formatacao: str, pasta_destino: Path) -> Path:
+    """Gera um único cenário; usado tanto pela CLI quanto pelo GitHub Actions."""
 
     print("\nGerando dados de referência (Lojas, Vendedores, Produtos)...")
     df_lojas = gerar_lojas()
@@ -308,14 +308,36 @@ def main() -> None:
     sufixo_formato = "padronizado" if formatacao == "1" else "com_erro"
     nome_arquivo = f"vendas_{ano}{mes:02d}_{sufixo_modo}_{sufixo_formato}.xlsx"
 
-    pasta_destino = Path(__file__).resolve().parent.parent / "data" / "raw"
     pasta_destino.mkdir(parents=True, exist_ok=True)
     caminho_saida = pasta_destino / nome_arquivo
 
     salvar_excel(dfs, caminho_saida)
-    print(f"\nPlanilha gerada com sucesso: {caminho_saida.resolve()}")
-    print("Pode ser processada com: python src/transform_xlsx_to_db.py "
-          f"--origem data/raw/{nome_arquivo} --destino data/resultados/banco_teste.db")
+    print(f"Planilha gerada: {caminho_saida.resolve()}")
+    return caminho_saida
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Gera planilhas de teste para a esteira de dados.")
+    parser.add_argument("--mes", type=int, default=6, choices=range(1, 13), help="Mês de referência (padrão: 6).")
+    parser.add_argument("--ano", type=int, default=2026, help="Ano de referência (padrão: 2026).")
+    parser.add_argument("--destino", type=Path, default=Path(__file__).resolve().parent.parent / "data" / "raw", help="Diretório de saída.")
+    parser.add_argument("--seed", type=int, default=20260727, help="Semente para resultados reproduzíveis.")
+    parser.add_argument("--interativo", action="store_true", help="Mantém o modo antigo de perguntas no terminal.")
+    args = parser.parse_args()
+
+    if args.interativo:
+        respostas = coletar_respostas()
+        random.seed(args.seed)
+        gerar_modelo(respostas["mes"], respostas["ano"], respostas["modo"], respostas["formatacao"], args.destino)
+        return
+
+    # Modo padrão, próprio para CI: sempre produz os dois cenários solicitados.
+    print("Gerando os dois modelos não interativos para validação automática...")
+    random.seed(args.seed)
+    gerar_modelo(args.mes, args.ano, "1", "1", args.destino)
+    random.seed(args.seed + 1)
+    gerar_modelo(args.mes, args.ano, "2", "2", args.destino)
+    print("Concluído: modelo íntegro e modelo com pendências/formatação incorreta.")
 
 
 if __name__ == "__main__":

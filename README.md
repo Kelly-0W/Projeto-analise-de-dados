@@ -23,6 +23,18 @@ O módulo `src/qualidade.py` é a única fonte das regras de padronização usad
 
 Além disso, cada tabela importada recebe `status_pendencia` (`Completo` ou `Pendente`) e `campos_pendentes`. A tabela `Dados_Pendentes` (importação) / `dados_pendentes` (análise) contém exclusivamente registros com problema, uma linha por campo faltante: `tabela_origem`, `linha_origem`, `registro_id`, `campo_pendente` e `status_pendencia`.
 
+# Gerador não interativo para GitHub Actions
+Por padrão, execute:
+```bash
+python src/gerar_planilha.py --mes 6 --ano 2026 --destino data/raw
+```
+
+O comando sempre gera dois arquivos determinísticos:
+1. `vendas_202606_completo_padronizado.xlsx`: sem dados ausentes ou erros de formato;
+2. `vendas_202606_aleatorio_com_erro.xlsx`: contém campos ausentes e textos, moedas e datas propositalmente mal formatados.
+
+Use `--interativo` apenas para o modo manual legado. O workflow em `.github/workflows/gerar-planilhas.yml` executa o modo não interativo e publica os dois arquivos como artefato do Actions.
+
 ## Execução
 ```powershell
 # 1. Instale as dependências necessárias
