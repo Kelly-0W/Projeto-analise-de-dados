@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
-      - run: python src/gerar_planilha.py --mes 6 --ano 2026 --destino data/raw
+      - run: python src/gerar_planilha.py
       - uses: actions/upload-artifact@v4
         with:
           name: planilhas-de-teste
